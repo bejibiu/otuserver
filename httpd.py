@@ -35,9 +35,15 @@ async def handle_client(sock: socket, loop):
     sock.close()
 
 
+def make_safe_uri(uri):
+    uri = f".{os.path.sep}{uri}"
+    uri = os.path.normpath(uri)
+    return uri
+
+
 def method_get(uri):
-    normalize_uri = os.path.normpath(uri)
-    path = os.path.join(DOCUMENT_ROOT, normalize_uri)
+    safe_uri = make_safe_uri(uri)
+    path = os.path.join(DOCUMENT_ROOT, safe_uri)
     if not os.path.exists(path):
         return "HTTP/1.1 404 NOT FOUND"
     if os.path.isdir(path):

@@ -2,3 +2,4 @@
 /.pytest_cache/
 /http-test-suite
 py[cod]
+__pycache__
