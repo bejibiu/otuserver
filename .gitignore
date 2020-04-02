@@ -3,3 +3,4 @@
 /http-test-suite
 py[cod]
 __pycache__
+.idea

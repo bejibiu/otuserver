@@ -1,8 +1,15 @@
 import os
-from httpd import method_get, DOCUMENT_ROOT
+
+from pytest import fixture
+
+from httpd import Server
 
 
-def test_method_list_dir():
-    path = DOCUMENT_ROOT
-    res = method_get('\\')
-    assert '\r\n'.join(os.listdir(path)) in res
+@fixture
+def server():
+    return Server()
+
+
+def test_method_list_dir(server):
+    res = server.method_get('\\')
+    assert '\r\n'.join(os.listdir(server.DOCUMENT_ROOT)) in res
