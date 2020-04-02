@@ -10,27 +10,8 @@ from http import server
 
 
 class Server:
-    DOCUMENT_ROOT = BASE_DIR
-    OK = 200
-    BAD_REQUEST = 400
-    FORBIDDEN = 403
-    NOT_FOUND = 404
-    METHOD_NOT_ALLOWED = 405
-    INTERNAL_ERROR = 500
-    STATUS = {
-        OK: "OK",
-        BAD_REQUEST: "Bad Request",
-        FORBIDDEN: "Forbidden",
-        NOT_FOUND: "Not Found",
-        METHOD_NOT_ALLOWED: "Method Not Allowed",
-        INTERNAL_ERROR: "Internal Server Error",
-    }
-    version_protocol = 'HTTP/1.1'
 
     def __init__(self, bind_ip="127.0.0.1", bind_port=8000, backlog=5, loop=None):
-        self.body = None
-        self.method = None
-        self.buffer_request = []
         self.loop = loop
         self.bind_ip = bind_ip
         self.bind_port = bind_port
@@ -48,15 +29,43 @@ class Server:
         while True:
             client_sock, address = await self.loop.sock_accept(self.server)
             logging.info(f'accept from {address}')
-            self.loop.create_task(self.handle_client(client_sock))
+            handle_client = HandleClient(loop, client_sock)
+            self.loop.create_task(handle_client.handle_client())
 
-    async def handle_client(self, sock: socket):
+
+class HandleClient:
+    DOCUMENT_ROOT = BASE_DIR
+    OK = 200
+    BAD_REQUEST = 400
+    FORBIDDEN = 403
+    NOT_FOUND = 404
+    METHOD_NOT_ALLOWED = 405
+    INTERNAL_ERROR = 500
+    STATUS = {
+        OK: "OK",
+        BAD_REQUEST: "Bad Request",
+        FORBIDDEN: "Forbidden",
+        NOT_FOUND: "Not Found",
+        METHOD_NOT_ALLOWED: "Method Not Allowed",
+        INTERNAL_ERROR: "Internal Server Error",
+    }
+    version_protocol = 'HTTP/1.1'
+
+    def __init__(self, loop, client_socket):
+        self.loop = loop
+        self.client_socket = client_socket
+        self.body = ""
+        self.method = None
+        self.buffer_request = []
+        self.loop = loop
+
+    async def handle_client(self):
 
         handler_method = {
             "GET": self.method_get,
             "HEAD": self.method_get
         }
-        request = (await self.loop.sock_recv(sock, 1024)).decode()
+        request = (await self.loop.sock_recv(self.client_socket, 1024)).decode()
         logging.info(f'recv: {request}')
         request_head = request.split("\r\n")[0]
         self.method, uri, _ = request_head.split()
@@ -65,8 +74,8 @@ class Server:
         handler(uri)
         logging.info(f'response: {self.body}')
 
-        await self.send_response(sock)
-        sock.close()
+        await self.send_response(self.client_socket)
+        self.client_socket.close()
 
     async def send_response(self, sock):
         response = "\r\n".join(self.buffer_request)
