@@ -1,13 +1,23 @@
 import asyncio
 import argparse
+import mimetypes
 import os
 import socket
 import logging
+import urllib
+from datetime import datetime
 
 BASE_DIR = os.path.dirname(__file__)
-
-from http import server
-
+DEFAULT_ERROR_MESSAGE = """\
+<html>
+    <head>
+        <title>Error response</title>
+    </head>
+    <body>
+        <h1>Error response</h1>
+    </body>
+</html>
+"""
 
 class Server:
 
@@ -20,6 +30,7 @@ class Server:
 
     def create_server(self):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((self.bind_ip, self.bind_port))
         logging.info(f"server bind on {self.bind_ip}:{self.bind_port}. http://{self.bind_ip}:{self.bind_port}")
         self.server.listen(self.backlog)
@@ -56,7 +67,7 @@ class HandleClient:
         self.client_socket = client_socket
         self.body = ""
         self.method = None
-        self.buffer_request = []
+        self.buffer_response = []
         self.loop = loop
 
     async def handle_client(self):
@@ -71,23 +82,32 @@ class HandleClient:
         self.method, uri, _ = request_head.split()
 
         handler = handler_method.get(self.method, self.method_not_allow)
-        handler(uri)
+        try:
+            handler(uri)
+        except Exception as e:
+            logging.exception(e)
+            self.buffer_response = []
+            self.add_headers_response(500)
+            self.body = ""
         logging.info(f'response: {self.body}')
 
         await self.send_response(self.client_socket)
         self.client_socket.close()
 
     async def send_response(self, sock):
-        response = "\r\n".join(self.buffer_request)
+        response = "\r\n".join(self.buffer_response)
+        response = bytes(response.encode())
+        response += b"\r\n\r\n"
         if self.method != "HEAD":
-            response += f"\r\n\r\n{self.body}"
-
-        await self.loop.sock_sendall(sock, data=response.encode())
+            response += self.body if isinstance(self.body, bytes) else self.body.encode()
+        await self.loop.sock_sendall(sock, data=response)
 
     @staticmethod
     def make_safe_uri(uri):
+        uri = urllib.parse.unquote(uri)
         uri = f".{os.path.sep}{uri}"
         uri = os.path.normpath(uri)
+        uri = uri.replace(f"..{os.path.sep}", "")
         return uri
 
     def method_get(self, uri):
@@ -96,20 +116,36 @@ class HandleClient:
         if not os.path.exists(path):
             return self.add_headers_response(self.NOT_FOUND)
         if os.path.isdir(path):
-            return self.method_list_dir(path)
-        with open(path, 'rb') as f:
-            self.body = f.read()
-        self.add_headers_response(200)
+            path = os.path.join(path, 'index.html')
+        self.method_load_index(path)
 
-    def method_list_dir(self, path):
-        self.body = '\r\n'.join(os.listdir(path))
-        self.add_headers_response(200)
+    def method_load_index(self, path):
+        logging.info(path)
+        try:
+            with open(path, 'rb') as file:
+                self.body = file.read()
+        except FileNotFoundError:
+            self.add_headers_response(404)
+            self.body = DEFAULT_ERROR_MESSAGE
+            self.add_headers('Content-Type', mimetypes.types_map[".html"])
+
+        else:
+            self.add_headers_response(200)
+            file_ext = os.path.splitext(path)[-1]
+            self.add_headers('Content-Type', mimetypes.types_map.get(file_ext, 'application/octet-stream'))
+            self.add_headers('Date', datetime.now())
+            self.add_headers('Server', "Otuserver")
+            self.add_headers('Connection', 'close')
+        self.add_headers('Content-Length', len(self.body))
 
     def method_not_allow(self, *args):
         return self.add_headers_response(self.METHOD_NOT_ALLOWED)
 
     def add_headers_response(self, status_code):
-        self.buffer_request.append(f"{self.version_protocol} {status_code} {self.STATUS[status_code]}")
+        self.buffer_response.append(f"{self.version_protocol} {status_code} {self.STATUS[status_code]}")
+
+    def add_headers(self, name, value):
+        self.buffer_response.append(f"{name}:{value}")
 
 
 if __name__ == "__main__":
