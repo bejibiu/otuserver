@@ -153,7 +153,7 @@ class HandleClient:
         self.buffer_response.append(f"{self.version_protocol} {status_code} {self.STATUS[status_code]}")
 
     def add_headers(self, name, value):
-        self.buffer_response.append(f"{name}:{value}")
+        self.buffer_response.append(f"{name}: {value}")
 
 
 if __name__ == "__main__":
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('--host', default="127.0.0.1", help="address to interface for server")
     parser.add_argument('--port', default=8000, type=int, help="port to listen ")
     parser.add_argument('--file-log', default=None, help='path to log file')
-    parser.add_argument('--backlog', default=5, type=int, help='backlog')
+    parser.add_argument('--backlog', default=100, type=int, help='backlog')
     parser.add_argument('-r', '--document-root', default=BASE_DIR, help='root folder for server')
     args = parser.parse_args()
 
