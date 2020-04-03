@@ -51,3 +51,8 @@ def test_file_without_(handle):
     handle.method_get('/httptest/../../../../../../../new')
     assert "HTTP/1.1 404 Not Found" in handle.buffer_response
 
+
+def test_file_with_query_string(handle):
+    handle.method_get('/httptest/dir2/page.html?arg1=value&arg2=value')
+    assert "HTTP/1.1 200 OK" in handle.buffer_response
+

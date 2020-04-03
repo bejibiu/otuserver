@@ -19,14 +19,16 @@ DEFAULT_ERROR_MESSAGE = """\
 </html>
 """
 
+
 class Server:
 
-    def __init__(self, bind_ip="127.0.0.1", bind_port=8000, backlog=5, loop=None):
+    def __init__(self, bind_ip="127.0.0.1", bind_port=8000, backlog=5, document_root=None, loop=None):
         self.loop = loop
         self.bind_ip = bind_ip
         self.bind_port = bind_port
         self.backlog = backlog
         self.server = None
+        self.document_root = document_root
 
     def create_server(self):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,12 +42,11 @@ class Server:
         while True:
             client_sock, address = await self.loop.sock_accept(self.server)
             logging.info(f'accept from {address}')
-            handle_client = HandleClient(loop, client_sock)
+            handle_client = HandleClient(loop, client_sock, self.document_root)
             self.loop.create_task(handle_client.handle_client())
 
 
 class HandleClient:
-    DOCUMENT_ROOT = BASE_DIR
     OK = 200
     BAD_REQUEST = 400
     FORBIDDEN = 403
@@ -62,7 +63,8 @@ class HandleClient:
     }
     version_protocol = 'HTTP/1.1'
 
-    def __init__(self, loop, client_socket):
+    def __init__(self, loop, client_socket, document_root=BASE_DIR):
+        self.DOCUMENT_ROOT = document_root
         self.loop = loop
         self.client_socket = client_socket
         self.body = ""
@@ -102,17 +104,20 @@ class HandleClient:
             response += self.body if isinstance(self.body, bytes) else self.body.encode()
         await self.loop.sock_sendall(sock, data=response)
 
-    @staticmethod
-    def make_safe_uri(uri):
-        uri = urllib.parse.unquote(uri)
-        uri = f".{os.path.sep}{uri}"
-        uri = os.path.normpath(uri)
-        uri = uri.replace(f"..{os.path.sep}", "")
-        return uri
+    def get_path(self, uri: str):
+        norm_uri = urllib.parse.unquote(uri)
+        norm_uri = norm_uri.partition("?")[0]
+        norm_uri = os.path.abspath(norm_uri)
+        norm_uri = norm_uri.lstrip("/")
+        path = os.path.join(self.DOCUMENT_ROOT, norm_uri)
+        if uri.endswith("/"):
+            if "/httptest/dir2/page.html/" in uri:
+                import pdb; pdb.set_trace()
+            path += "/"
+        return path
 
     def method_get(self, uri):
-        safe_uri = self.make_safe_uri(uri)
-        path = os.path.join(self.DOCUMENT_ROOT, safe_uri)
+        path = self.get_path(uri)
         if not os.path.exists(path):
             return self.add_headers_response(self.NOT_FOUND)
         if os.path.isdir(path):
@@ -128,14 +133,17 @@ class HandleClient:
             self.add_headers_response(404)
             self.body = DEFAULT_ERROR_MESSAGE
             self.add_headers('Content-Type', mimetypes.types_map[".html"])
-
+        except PermissionError:
+            self.add_headers_response(403)
+            self.body = DEFAULT_ERROR_MESSAGE
+            self.add_headers('Content-Type', mimetypes.types_map[".html"])
         else:
             self.add_headers_response(200)
             file_ext = os.path.splitext(path)[-1]
             self.add_headers('Content-Type', mimetypes.types_map.get(file_ext, 'application/octet-stream'))
-            self.add_headers('Date', datetime.now())
-            self.add_headers('Server', "Otuserver")
-            self.add_headers('Connection', 'close')
+        self.add_headers('Date', datetime.now())
+        self.add_headers('Server', "Otuserver")
+        self.add_headers('Connection', 'close')
         self.add_headers('Content-Length', len(self.body))
 
     def method_not_allow(self, *args):
@@ -154,12 +162,13 @@ if __name__ == "__main__":
     parser.add_argument('--port', default=8000, type=int, help="port to listen ")
     parser.add_argument('--file-log', default=None, help='path to log file')
     parser.add_argument('--backlog', default=5, type=int, help='backlog')
+    parser.add_argument('-r', '--document-root', default=BASE_DIR, help='root folder for server')
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s',
                         filename=args.file_log,
                         datefmt='%Y.%m.%d %H:%M:%S')
     loop = asyncio.get_event_loop()
-    server = Server(args.host, args.port, args.backlog, loop=loop)
+    server = Server(args.host, args.port, args.backlog, args.document_root, loop)
     server.create_server()
     loop.run_until_complete(server.run_forever())
