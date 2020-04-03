@@ -33,6 +33,13 @@ Other params
 |backlog|--backlog|backlog|100
 |document-root| -r --document-root|root folder for server| work directory|
 
+Docker 
+----
+To run server use docker:
+```shell script
+docker build -t otuserver .
+docker run --rm -p 8000:8000 otuserver
+```
 
 Result apache benchmarks 
 ```shell script
