@@ -71,6 +71,7 @@ class HandleClient:
         self.method = None
         self.buffer_response = []
         self.loop = loop
+        self.file_size = 0
 
     async def handle_client(self):
 
@@ -111,8 +112,6 @@ class HandleClient:
         norm_uri = norm_uri.lstrip("/")
         path = os.path.join(self.DOCUMENT_ROOT, norm_uri)
         if uri.endswith("/"):
-            if "/httptest/dir2/page.html/" in uri:
-                import pdb; pdb.set_trace()
             path += "/"
         return path
 
@@ -127,8 +126,10 @@ class HandleClient:
     def method_load_index(self, path):
         logging.info(path)
         try:
+            self.file_size = os.path.getsize(path)
             with open(path, 'rb') as file:
-                self.body = file.read()
+                if self.method == "GET":
+                    self.body = file.read()
         except FileNotFoundError:
             self.add_headers_response(404)
             self.body = DEFAULT_ERROR_MESSAGE
@@ -144,7 +145,7 @@ class HandleClient:
         self.add_headers('Date', datetime.now())
         self.add_headers('Server', "Otuserver")
         self.add_headers('Connection', 'close')
-        self.add_headers('Content-Length', len(self.body))
+        self.add_headers('Content-Length', self.file_size or len(self.body))
 
     def method_not_allow(self, *args):
         return self.add_headers_response(self.METHOD_NOT_ALLOWED)
