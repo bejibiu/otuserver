@@ -79,7 +79,7 @@ class HandleClient:
             "GET": self.method_get,
             "HEAD": self.method_get
         }
-        request = (await self.loop.sock_recv(self.client_socket, 1024)).decode()
+        request = await self.recv_from_socket()
         logging.info(f'recv: {request}')
         request_head = request.split("\r\n")[0]
         self.method, uri, _ = request_head.split()
@@ -96,6 +96,16 @@ class HandleClient:
 
         await self.send_response(self.client_socket)
         self.client_socket.close()
+
+    async def recv_from_socket(self):
+        buffer_message = ""
+
+        while True:
+            message = (await self.loop.sock_recv(self.client_socket, 1024)).decode()
+            if "\r\n" in message or len(message) == 0:
+                return buffer_message + message
+            buffer_message += message
+            logging.error(f"len={message}, buf={buffer_message}")
 
     async def send_response(self, sock):
         response = "\r\n".join(self.buffer_response)
