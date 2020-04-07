@@ -18,6 +18,7 @@ DEFAULT_ERROR_MESSAGE = """\
     </body>
 </html>
 """
+MAX_LENGTH_REQUEST = 20 * 1024
 
 
 class Server:
@@ -102,7 +103,7 @@ class HandleClient:
 
         while True:
             message = (await self.loop.sock_recv(self.client_socket, 1024)).decode()
-            if "\r\n" in message or len(message) == 0:
+            if "\r\n" in message or len(message) == 0 or len(message) > MAX_LENGTH_REQUEST:
                 return buffer_message + message
             buffer_message += message
             logging.error(f"len={message}, buf={buffer_message}")
