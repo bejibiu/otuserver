@@ -1,5 +1,6 @@
 import asyncio
 import argparse
+import concurrent.futures
 import mimetypes
 import os
 import socket
@@ -23,12 +24,13 @@ MAX_LENGTH_REQUEST = 20 * 1024
 
 class Server:
 
-    def __init__(self, bind_ip="127.0.0.1", bind_port=8000, backlog=5, document_root=None, loop=None):
-        self.loop = loop
+    def __init__(self, bind_ip="127.0.0.1", bind_port=8000, backlog=5, document_root=None, workers=1):
+        self.workers = workers
         self.bind_ip = bind_ip
         self.bind_port = bind_port
         self.backlog = backlog
         self.server = None
+        self.executer = concurrent.futures.ThreadPoolExecutor(max_workers=self.workers)
         self.document_root = document_root
 
     def create_server(self):
@@ -36,15 +38,24 @@ class Server:
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind((self.bind_ip, self.bind_port))
         logging.info(f"server bind on {self.bind_ip}:{self.bind_port}. http://{self.bind_ip}:{self.bind_port}")
+        logging.info(f"{self.workers} in progress")
         self.server.listen(self.backlog)
-        self.server.setblocking(False)
 
-    async def run_forever(self):
-        while True:
-            client_sock, address = await self.loop.sock_accept(self.server)
-            logging.info(f'accept from {address}')
-            handle_client = HandleClient(loop, client_sock, self.document_root)
-            self.loop.create_task(handle_client.handle_client())
+    def run_forever(self):
+        with self.executer as executor:
+            while True:
+                client_sock, address = self.server.accept()
+                logging.info(f'accept from {address}')
+                executor.submit(self.create_async_acceptor,
+                                *(client_sock, self.document_root, asyncio.new_event_loop()))
+
+    @staticmethod
+    def create_async_acceptor(client_sock, document_root, loop):
+        logging.info('acceptor from new thread')
+        asyncio.set_event_loop(loop)
+        handle_client = HandleClient(loop, client_sock, document_root)
+        task = loop.create_task(handle_client.handle_client())
+        loop.run_until_complete(task)
 
 
 class HandleClient:
@@ -66,7 +77,6 @@ class HandleClient:
 
     def __init__(self, loop, client_socket, document_root=BASE_DIR):
         self.DOCUMENT_ROOT = document_root
-        self.loop = loop
         self.client_socket = client_socket
         self.body = ""
         self.method = None
@@ -170,6 +180,7 @@ class HandleClient:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('-w', '--workers', default=1, type=int, help="count proccess workers")
     parser.add_argument('--host', default="127.0.0.1", help="address to interface for server")
     parser.add_argument('--port', default=8000, type=int, help="port to listen ")
     parser.add_argument('--file-log', default=None, help='path to log file')
@@ -177,10 +188,10 @@ if __name__ == "__main__":
     parser.add_argument('-r', '--document-root', default=BASE_DIR, help='root folder for server')
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s %(message)s',
+    logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(threadName)s %(levelname)s %(message)s',
                         filename=args.file_log,
                         datefmt='%Y.%m.%d %H:%M:%S')
-    loop = asyncio.get_event_loop()
-    server = Server(args.host, args.port, args.backlog, args.document_root, loop)
+    server = Server(bind_ip=args.host, bind_port=args.port, backlog=args.backlog, document_root=args.document_root,
+                    workers=args.workers)
     server.create_server()
-    loop.run_until_complete(server.run_forever())
+    server.run_forever()
