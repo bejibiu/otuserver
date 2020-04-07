@@ -1,6 +1,7 @@
 Otuserver
 ================
-Project for training. Simple web server  uses asyncio with epoll
+Project for training. Simple web server  uses asyncio with epoll. 
+Add worksers by ThreadPool. 
 
 Required
 ---------
@@ -32,6 +33,7 @@ Other params
 |file-log| --file-log|file to write log|None
 |backlog|--backlog|backlog|100
 |document-root| -r --document-root|root folder for server| work directory|
+|workers| -w --workers| count ThreadPool| 1|
 
 Docker 
 ----
@@ -41,10 +43,12 @@ docker build -t otuserver .
 docker run --rm -p 8000:8000 otuserver
 ```
 
-Result apache benchmarks 
+Result apache benchmarks
 ```shell script
 ab ab -n 50000 -c 100 -r http://localhost:8000/
 ``` 
+ **without workers** :
+
 ```shell script
 Server Software:        Otuserver
 Server Hostname:        localhost
@@ -84,3 +88,43 @@ Percentage of the requests served within a certain time (ms)
   99%     68
  100%     80 (longest request)
 ```
+With worksers :
+```shell script
+Server Software:        Otuserver
+Server Hostname:        127.0.0.1
+Server Port:            8000
+
+Document Path:          /
+Document Length:        131 bytes
+
+Concurrency Level:      100
+Time taken for tests:   42.582 seconds
+Complete requests:      25000
+Failed requests:        0
+Write errors:           0
+Non-2xx responses:      25000
+Total transferred:      6875000 bytes
+HTML transferred:       3275000 bytes
+Requests per second:    587.10 [#/sec] (mean)
+Time per request:       170.328 [ms] (mean)
+Time per request:       1.703 [ms] (mean, across all concurrent requests)
+Transfer rate:          157.67 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.2      0       6
+Processing:     2  170  28.5    162     971
+Waiting:        2  169  28.5    161     971
+Total:          5  170  28.5    162     971
+
+Percentage of the requests served within a certain time (ms)
+  50%    162
+  66%    168
+  75%    173
+  80%    177
+  90%    195
+  95%    228
+  98%    253
+  99%    274
+ 100%    971 (longest request)
+ ```
