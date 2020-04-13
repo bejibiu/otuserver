@@ -91,40 +91,39 @@ Percentage of the requests served within a certain time (ms)
 With worksers :
 ```shell script
 Server Software:        Otuserver
-Server Hostname:        127.0.0.1
+Server Hostname:        localhost
 Server Port:            8000
 
 Document Path:          /
-Document Length:        131 bytes
+Document Length:        51 bytes
 
 Concurrency Level:      100
-Time taken for tests:   42.582 seconds
-Complete requests:      25000
+Time taken for tests:   136.776 seconds
+Complete requests:      50000
 Failed requests:        0
 Write errors:           0
-Non-2xx responses:      25000
-Total transferred:      6875000 bytes
-HTML transferred:       3275000 bytes
-Requests per second:    587.10 [#/sec] (mean)
-Time per request:       170.328 [ms] (mean)
-Time per request:       1.703 [ms] (mean, across all concurrent requests)
-Transfer rate:          157.67 [Kbytes/sec] received
+Total transferred:      9350000 bytes
+HTML transferred:       2550000 bytes
+Requests per second:    365.56 [#/sec] (mean)
+Time per request:       273.552 [ms] (mean)
+Time per request:       2.736 [ms] (mean, across all concurrent requests)
+Transfer rate:          66.76 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
-Connect:        0    0   0.2      0       6
-Processing:     2  170  28.5    162     971
-Waiting:        2  169  28.5    161     971
-Total:          5  170  28.5    162     971
+Connect:        0    0   0.3      0       7
+Processing:     6  273  25.1    268    1134
+Waiting:        5  272  25.1    267    1133
+Total:         13  273  25.1    268    1134
 
 Percentage of the requests served within a certain time (ms)
-  50%    162
-  66%    168
-  75%    173
-  80%    177
-  90%    195
-  95%    228
-  98%    253
-  99%    274
- 100%    971 (longest request)
+  50%    268
+  66%    275
+  75%    280
+  80%    284
+  90%    299
+  95%    315
+  98%    346
+  99%    371
+ 100%   1134 (longest request)
  ```
