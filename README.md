@@ -47,7 +47,7 @@ Result apache benchmarks
 ```shell script
 ab ab -n 50000 -c 100 -r http://localhost:8000/
 ``` 
- **without workers** :
+ **without workers**  commit: *729aeb1* :
 
 ```shell script
 Server Software:        Otuserver
@@ -55,38 +55,37 @@ Server Hostname:        localhost
 Server Port:            8000
 
 Document Path:          /
-Document Length:        131 bytes
+Document Length:        63 bytes
 
 Concurrency Level:      100
-Time taken for tests:   25.356 seconds
+Time taken for tests:   31.007 seconds
 Complete requests:      50000
 Failed requests:        0
 Write errors:           0
-Non-2xx responses:      50000
-Total transferred:      13750000 bytes
-HTML transferred:       6550000 bytes
-Requests per second:    1971.90 [#/sec] (mean)
-Time per request:       50.713 [ms] (mean)
-Time per request:       0.507 [ms] (mean, across all concurrent requests)
-Transfer rate:          529.56 [Kbytes/sec] received
+Total transferred:      9950000 bytes
+HTML transferred:       3150000 bytes
+Requests per second:    1612.51 [#/sec] (mean)
+Time per request:       62.015 [ms] (mean)
+Time per request:       0.620 [ms] (mean, across all concurrent requests)
+Transfer rate:          313.37 [Kbytes/sec] received
 
 Connection Times (ms)
               min  mean[+/-sd] median   max
-Connect:        0    0   0.2      0       4
-Processing:     5   51   3.9     50      80
-Waiting:        1   51   3.9     50      80
-Total:          5   51   3.8     50      80
+Connect:        0    0   0.2      0       7
+Processing:     9   62   8.0     59     140
+Waiting:        2   62   8.0     59     140
+Total:          9   62   8.0     59     140
 
 Percentage of the requests served within a certain time (ms)
-  50%     50
-  66%     50
-  75%     51
-  80%     52
-  90%     54
-  95%     58
-  98%     62
-  99%     68
- 100%     80 (longest request)
+  50%     59
+  66%     61
+  75%     63
+  80%     64
+  90%     70
+  95%     77
+  98%     86
+  99%     93
+ 100%    140 (longest request)
 ```
 With worksers :
 ```shell script
